@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mcp_oauth_client_system,mcp.oauth.client system,model_mcp_oauth_client,base.group_system,1,1,1,1
+access_mcp_oauth_code_system,mcp.oauth.code system,model_mcp_oauth_code,base.group_system,1,1,1,1
+access_mcp_oauth_token_system,mcp.oauth.token system,model_mcp_oauth_token,base.group_system,1,1,1,1

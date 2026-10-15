@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Estilos compartidos por las pantallas del servidor de autorización. -->
+    <template id="mcp_oauth_styles" name="Estilos OAuth de MCP">
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 2rem 1rem; background: #f4f4f4; color: #23272f; }
+            main { max-width: 34rem; margin: 0 auto; padding: 2rem; background: #fff; border: 1px solid #dee2e6; border-radius: .5rem; }
+            h1 { font-size: 1.3rem; margin: 0 0 1rem; }
+            p { line-height: 1.5; }
+            dl { display: grid; grid-template-columns: auto 1fr; gap: .4rem 1rem; margin: 1.25rem 0; }
+            dt { font-weight: 600; }
+            dd { margin: 0; overflow-wrap: anywhere; }
+            .client { font-weight: 700; }
+            .warning { background: #fff3cd; border: 1px solid #ffe69c; padding: .75rem; border-radius: .35rem; }
+            .error { font-weight: 700; color: #b3261e; }
+            form { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: .75rem; margin-top: 1.5rem; }
+            button { padding: .5rem 1.25rem; border-radius: .35rem; border: 1px solid #017e84; font: inherit; cursor: pointer; }
+            button.allow { background: #017e84; color: #fff; }
+            button.deny { background: #fff; color: #017e84; }
+        </style>
+    </template>
+
+    <!-- Pantalla de consentimiento: el usuario decide si el cliente MCP
+         (identificado por su Client ID Metadata Document) puede usar el
+         endpoint elegido con su cuenta de Odoo. -->
+    <template id="mcp_oauth_consent" name="Consentimiento OAuth de MCP">
+        <html>
+            <head>
+                <title>Autorizar cliente MCP</title>
+                <meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <t t-call="odoo_mcp_action.mcp_oauth_styles"/>
+            </head>
+            <body>
+                <main>
+                    <h1>Autorizar cliente MCP</h1>
+                    <p>
+                        <span class="client" t-out="client_host"/>
+                        solicita acceso al endpoint MCP
+                        <span class="client" t-out="resource"/>
+                        en su nombre.
+                    </p>
+                    <dl>
+                        <dt>Aplicación</dt>
+                        <dd>
+                            <span t-out="client_name"/>
+                            <br/>
+                            <span t-out="client.client_id"/>
+                        </dd>
+                        <dt>Permisos</dt>
+                        <dd t-out="', '.join(scopes)"/>
+                        <dt>URL de retorno</dt>
+                        <dd t-out="redirect_uri"/>
+                        <dt>Usuario de Odoo</dt>
+                        <dd t-out="user.name"/>
+                    </dl>
+                    <p class="warning" t-if="loopback_only">
+                        El cliente solo declara direcciones de retorno locales
+                        (<span t-out="redirect_host"/>): cualquier programa de
+                        este equipo podría recibir el código de autorización.
+                        Continúe solo si ha iniciado esta conexión usted mismo.
+                    </p>
+                    <p class="warning" t-else="">
+                        El código de autorización se enviará a
+                        <span t-out="redirect_host"/>. Compruebe que es el
+                        dominio que espera antes de continuar.
+                    </p>
+                    <!-- «Cancelar» va primero en el DOM: así la tecla Intro no
+                         autoriza por accidente (el orden visual se invierte
+                         con CSS). -->
+                    <form method="post" action="/mcp/oauth/authorize">
+                        <input type="hidden" name="csrf_token" t-att-value="csrf_token"/>
+                        <t t-foreach="hidden" t-as="field">
+                            <input type="hidden" t-att-name="field[0]" t-att-value="field[1]"/>
+                        </t>
+                        <button type="submit" name="decision" value="deny" class="deny">
+                            Cancelar
+                        </button>
+                        <button type="submit" name="decision" value="allow" class="allow">
+                            Autorizar
+                        </button>
+                    </form>
+                </main>
+            </body>
+        </html>
+    </template>
+
+    <!-- Error de autorización: se muestra cuando no es seguro redirigir al
+         cliente (cliente desconocido o URL de retorno no registrada). -->
+    <template id="mcp_oauth_error" name="Error de autorización de MCP">
+        <html>
+            <head>
+                <title>Error al autorizar</title>
+                <meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <t t-call="odoo_mcp_action.mcp_oauth_styles"/>
+            </head>
+            <body>
+                <main>
+                    <h1>No se pudo autorizar la conexión</h1>
+                    <p class="error" t-out="error"/>
+                    <p t-out="description"/>
+                    <p>
+                        Cierre esta ventana y vuelva a intentarlo desde su
+                        cliente MCP.
+                    </p>
+                </main>
+            </body>
+        </html>
+    </template>
+</odoo>

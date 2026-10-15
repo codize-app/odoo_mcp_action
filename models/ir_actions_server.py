@@ -5,8 +5,6 @@ from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 from odoo.tools.safe_eval import safe_eval
 
-MCP_TOKEN_PARAM = "mcp_server_action.token"
-
 
 class IrActionsServer(models.Model):
     _inherit = "ir.actions.server"
@@ -66,6 +64,19 @@ class IrActionsServer(models.Model):
             if action._mcp_tool_name() == name:
                 return action
         return actions[:0]
+
+    @api.model
+    def _mcp_route_exists(self, route):
+        """¿Hay algún endpoint MCP publicado en esa ruta?"""
+        return bool(
+            self.sudo().search_count(
+                [
+                    ("is_mcp", "=", True),
+                    ("mcp_route", "=", route),
+                    ("state", "=", "code"),
+                ]
+            )
+        )
 
     @api.model
     def _mcp_tools_list(self, route):

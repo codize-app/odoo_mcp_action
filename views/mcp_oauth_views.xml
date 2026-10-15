@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Clientes OAuth: los descubiertos por su «client_id» URL (CIMD) y los
+         registrados dinámicamente (RFC 7591). -->
+    <record id="view_mcp_oauth_client_list" model="ir.ui.view">
+        <field name="name">mcp.oauth.client.list</field>
+        <field name="model">mcp.oauth.client</field>
+        <field name="arch" type="xml">
+            <list create="false" edit="false">
+                <field name="name"/>
+                <field name="client_id"/>
+                <field name="is_cimd"/>
+                <field name="token_endpoint_auth_method"/>
+                <field name="metadata_expires_at"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_mcp_oauth_clients" model="ir.actions.act_window">
+        <field name="name">Clientes MCP</field>
+        <field name="res_model">mcp.oauth.client</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Aún no hay clientes MCP conectados
+            </p>
+            <p>
+                Los clientes aparecen aquí en cuanto alguien conecta uno
+                contra un endpoint <code>/mcp/&lt;ruta&gt;</code>.
+            </p>
+        </field>
+    </record>
+
+    <!-- Tokens emitidos: eliminar una fila corta el acceso al instante. -->
+    <record id="view_mcp_oauth_token_list" model="ir.ui.view">
+        <field name="name">mcp.oauth.token.list</field>
+        <field name="model">mcp.oauth.token</field>
+        <field name="arch" type="xml">
+            <list create="false" edit="false">
+                <field name="client_id"/>
+                <field name="user_id"/>
+                <field name="resource"/>
+                <field name="scope"/>
+                <field name="kind"/>
+                <field name="expires_at"/>
+                <field name="revoked"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_mcp_oauth_tokens" model="ir.actions.act_window">
+        <field name="name">Tokens MCP</field>
+        <field name="res_model">mcp.oauth.token</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Sin tokens emitidos
+            </p>
+            <p>
+                Cada autorización emite un token de acceso (una hora) y uno
+                de refresco (30 días), ambos ligados a una ruta MCP.
+            </p>
+        </field>
+    </record>
+
+    <menuitem
+        id="menu_mcp_oauth"
+        name="MCP (OAuth)"
+        parent="base.menu_custom"
+        groups="base.group_system"
+        sequence="30"/>
+    <menuitem
+        id="menu_mcp_oauth_clients"
+        name="Clientes MCP"
+        parent="menu_mcp_oauth"
+        action="action_mcp_oauth_clients"
+        groups="base.group_system"
+        sequence="1"/>
+    <menuitem
+        id="menu_mcp_oauth_tokens"
+        name="Tokens MCP"
+        parent="menu_mcp_oauth"
+        action="action_mcp_oauth_tokens"
+        groups="base.group_system"
+        sequence="2"/>
+</odoo>
