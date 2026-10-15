@@ -1,6 +1,6 @@
-# mcp_server_action — Acciones de servidor como endpoints MCP
+# Odoo MCP - Server Actiones
 
-## Qué hace
+## Funcionalidad
 
 Expone acciones de servidor nativas (`ir.actions.server`) como **herramientas MCP** (Model Context Protocol) vía JSON-RPC 2.0 sobre HTTP POST. Cada acción MCP ejecuta su propio campo `code` (Python) y devuelve el resultado al LLM.
 
