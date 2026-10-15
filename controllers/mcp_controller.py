@@ -13,7 +13,15 @@ MCP_PROTOCOL_VERSION = "2025-03-26"
 
 class McpController(http.Controller):
     @http.route(
-        "/mcp/<string:route>", type="http", auth="none", methods=["POST"], csrf=False
+        "/mcp/<string:route>",
+        type="http",
+        auth="none",
+        methods=["POST"],
+        csrf=False,
+        # En Odoo 19 las rutas auth="none" abren cursor de solo lectura por
+        # defecto; el código de la acción puede escribir, así que se fuerza
+        # el cursor de lectura/escritura desde el principio.
+        readonly=False,
     )
     def mcp_endpoint(self, route, **kwargs):
         try:

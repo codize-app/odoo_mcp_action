@@ -41,6 +41,8 @@ Si el parámetro no existe o no coincide, el endpoint responde **401** en todo (
 
 URL del endpoint: `https://<odoo>/mcp/<ruta>` (p. ej. `https://mi-odoo.example.com/mcp/ventas`).
 
+El nombre de cada herramienta es el xml_id de la acción si tiene uno (`tools/list` lo devuelve); para acciones creadas desde la interfaz es `accion_<id>`.
+
 Ejemplo con `curl`:
 
 ```bash
@@ -60,7 +62,7 @@ curl -sS -X POST "$URL" \
 # tools/call
 curl -sS -X POST "$URL" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"mcp_server_action.accion_5","arguments":{"limite":5}}}'
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"accion_5","arguments":{"limite":5}}}'
 ```
 
 Compatibilidad: clientes MCP que soporten HTTP simple con Bearer (n8n, agentes custom). Claude Desktop (OAuth) queda fuera de alcance.
