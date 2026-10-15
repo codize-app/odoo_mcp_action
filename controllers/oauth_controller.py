@@ -406,7 +406,7 @@ class McpOauthController(http.Controller):
         grupo (por ejemplo, un grupo de integraciones).
         """
         group = McpOauthController._authorized_group()
-        return bool(group) and group in request.env.user.groups_id
+        return bool(group) and group in request.env.user.group_ids
 
     @staticmethod
     def _authorized_group():
