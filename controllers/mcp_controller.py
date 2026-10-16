@@ -1,10 +1,5 @@
-"""Servidor de recursos MCP: los endpoints ``/mcp/<ruta>``.
-
-Cada ruta es un endpoint JSON-RPC 2.0 (MCP over HTTP) protegido por OAuth
-2.1: sin un token de acceso emitido para esa misma URL se responde 401 con
-el puntero al documento de recurso protegido (RFC 9728). Ese 401 es lo que
-hace que Claude, Claude Code y demás clientes MCP abran el flujo de OAuth
-solos, sin que nadie configure un secreto en el cliente.
+"""
+Servidor de recursos MCP: los endpoints ``/mcp/<ruta>``.
 """
 
 import json
@@ -32,9 +27,6 @@ class McpController(http.Controller):
         auth="none",
         methods=["POST"],
         csrf=False,
-        # En Odoo 19 las rutas auth="none" abren cursor de solo lectura por
-        # defecto; el código de la acción puede escribir, así que se fuerza
-        # el cursor de lectura/escritura desde el principio.
         readonly=False,
     )
     def mcp_endpoint(self, route, **kwargs):
@@ -48,11 +40,9 @@ class McpController(http.Controller):
             return self._error_response(
                 None, -32600, "Petición JSON-RPC no válida", status=400
             )
-        # Notificaciones MCP (p. ej. notifications/initialized): sin «id», sin respuesta
+        # MCP
         if "id" not in payload:
             return request.make_response("", status=202)
-        # El token debe estar emitido para este endpoint concreto: un token
-        # de otra ruta no sirve (RFC 8707, nunca se aceptan tokens ajenos).
         resource = mcp_resource_url(route)
         if not (
             request.env["mcp.oauth.token"]
@@ -108,17 +98,10 @@ class McpController(http.Controller):
         csrf=False,
     )
     def protected_resource_metadata(self, route, **kwargs):
-        """Documento RFC 9728 que apunta al servidor de autorización."""
         return request.make_json_response(mcp_protected_resource_metadata(route))
 
     @staticmethod
     def _client_protocol_version(payload):
-        """Versión MCP pedida por el cliente, o la nuestra por defecto.
-
-        El transporte que exponemos (petición JSON, respuesta JSON) es el
-        mismo en todas las revisiones del protocolo, así que se responde lo
-        que pida el cliente para no forzar una negociación a la baja.
-        """
         requested = (payload.get("params") or {}).get("protocolVersion")
         if isinstance(requested, str) and requested:
             return requested
@@ -126,11 +109,6 @@ class McpController(http.Controller):
 
     @staticmethod
     def _unauthorized(payload, route):
-        """401 con el puntero de descubrimiento y el ámbito mínimo requerido.
-
-        El cliente solo inicia el flujo OAuth ante un 401 de transporte que
-        incluya ``resource_metadata``; un error dentro de un 200 no lo haría.
-        """
         challenge = []
         if request.httprequest.headers.get("Authorization"):
             challenge.append('error="invalid_token"')
