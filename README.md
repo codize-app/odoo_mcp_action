@@ -2,7 +2,7 @@
 
 ## Funcionalidad
 
-Expone acciones de servidor nativas (`ir.actions.server`) como **herramientas MCP** (Model Context Protocol) vía JSON-RPC 2.0 sobre HTTP POST. Cada acción MCP ejecuta su propio campo `code` (Python) y devuelve el resultado al LLM.
+Creador de Servidores MCP para Odoo nativo. Expone acciones de servidor nativas (`ir.actions.server`) como **herramientas MCP** (Model Context Protocol) vía JSON-RPC 2.0 sobre HTTP POST. Cada acción MCP ejecuta su propio campo `code` (Python) y devuelve el resultado al LLM.
 
 Cada **ruta MCP** (`mcp_route`) es un endpoint segmentado: `/mcp/<ruta>` lista y llama solo las acciones MCP que compartan esa ruta. Varias rutas = varias áreas segmentadas.
 
@@ -15,7 +15,7 @@ Cada **ruta MCP** (`mcp_route`) es un endpoint segmentado: `/mcp/<ruta>` lista y
 
 1. Ajustes Técnicos → Acciones de servidor → Nueva.
 2. Tipo: **Ejecutar código Python**; elegir modelo (opcional, para `record`/`records`).
-3. Pestaña **MCP**: activar **¿Es endpoint MCP?** y poner una **ruta** (p. ej. `ventas`).
+3. Pestaña **MCP**: activar **¿Es endpoint MCP?** y poner una **ruta** (p. ej. `sales`).
 
 El código debe asignar la respuesta a la variable `result` (serializable a JSON; un recordset se convierte con `read()`). Disponibles las variables nativas (`env`, `model`, `record`, `records`, `log`, `time`, `datetime`, …) más `args` (dict de argumentos que envía el LLM).
 
@@ -23,7 +23,7 @@ Ejemplo (modelos de `base`, sin dependencias extra):
 
 ```python
 result = env["res.partner"].search_read(
-    [("is_company", "=", True)], ["name", "email"], limit=args.get("limite", 10)
+    [("is_company", "=", True)], ["name", "email"]
 )
 ```
 
@@ -39,7 +39,7 @@ Los endpoints están protegidos con **OAuth 2.1** y el módulo hace también de 
   - **Client ID Metadata Document (CIMD)**: su `client_id` es una URL HTTPS pública que publica él mismo (Claude usa `https://claude.ai/oauth/mcp-oauth-client-metadata`, Claude Code `https://claude.ai/oauth/claude-code-client-metadata`). Odoo descarga ese documento, comprueba que su `client_id` coincide con la URL y valida la `redirect_uri` contra las `redirect_uris` declaradas.
   - **Registro dinámico** (RFC 7591), para clientes que no publican documento.
 - El usuario inicia sesión **en su Odoo** y autoriza en una pantalla que muestra el host del `client_id`, la URL de retorno y los permisos.
-- El token se emite con **PKCE obligatorio (S256)** y queda ligado al endpoint concreto (`resource`, RFC 8707): un token de `/mcp/ventas` no sirve en `/mcp/compras`.
+- El token se emite con **PKCE obligatorio (S256)** y queda ligado al endpoint concreto (`resource`, RFC 8707): un token de `/mcp/sales` no sirve en `/mcp/purchases`.
 
 ### Conectar Claude
 
@@ -108,4 +108,4 @@ El parámetro antiguo `mcp_server_action.token` **ya no se usa**: si venía de l
 - La pantalla de consentimiento muestra el host del `client_id` (lo único que el cliente no puede falsificar), la URL de retorno completa y un aviso extra cuando solo hay retornos de bucle local.
 - El registro dinámico está limitado a 1000 clientes para acotar el abuso.
 - Solo administradores crean acciones (campo `code` restringido a sistema) y parámetros del sistema.
-- Cada ruta segmenta qué ve cada cliente: un cliente de `/mcp/ventas` no ve ni llama herramientas de otra ruta.
+- Cada ruta segmenta qué ve cada cliente: un cliente de `/mcp/sales` no ve ni llama herramientas de otra ruta.
