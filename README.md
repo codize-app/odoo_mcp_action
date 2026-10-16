@@ -6,12 +6,9 @@ Creador de Servidores MCP para Odoo nativo. Expone acciones de servidor nativas 
 
 Cada **ruta MCP** (`mcp_route`) es un endpoint segmentado: `/mcp/<ruta>` lista y llama solo las acciones MCP que compartan esa ruta. Varias rutas = varias áreas segmentadas.
 
-## Requisitos
+## Uso
 
-- Odoo 19 Community.
-- Módulo instalado (depende solo de `base`).
-
-## Crear un MCP
+### Crear un MCP
 
 1. Ajustes Técnicos → Acciones de servidor → Nueva.
 2. Tipo: **Ejecutar código Python**; elegir modelo (opcional, para `record`/`records`).
@@ -43,7 +40,7 @@ Los endpoints están protegidos con **OAuth 2.1** y el módulo hace también de 
 
 ### Conectar Claude
 
-Ajustes → **Conectores** → *Añadir conector personalizado* → URL `https://<odoo>/mcp/<ruta>` (p. ej. `https://mi-odoo.example.com/mcp/ventas`). Claude abre la pantalla de Odoo, el usuario autoriza y la conexión queda lista. No hay nada que configurar en Claude: sin pegatinas de token y sin claves propias.
+Ajustes → **Conectores** → *Añadir conector personalizado* → URL `https://<odoo>/mcp/<ruta>` (p. ej. `https://mi-odoo.example.com/mcp/sales`). Claude abre la pantalla de Odoo, el usuario autoriza y la conexión queda lista. No hay nada que configurar en Claude: sin pegatinas de token y sin claves propias.
 
 ### Conectar Claude Code
 
