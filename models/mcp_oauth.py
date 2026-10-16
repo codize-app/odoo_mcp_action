@@ -1,12 +1,5 @@
-"""Modelos OAuth 2.1 que dan soporte a los endpoints MCP.
-
-El módulo hace a la vez de servidor de recursos (los endpoints
-``/mcp/<ruta>``) y de servidor de autorización: publica metadatos de
-recurso protegido (RFC 9728) y de servidor de autorización (RFC 8414),
-acepta clientes identificados con un *Client ID Metadata Document*
-(CIMD, ``client_id`` con forma de URL) y también clientes registrados
-dinámicamente (RFC 7591), y emite tokens de acceso ligados al recurso
-(RFC 8707) con rotación de tokens de refresco.
+"""
+Modelos OAuth 2.1 que dan soporte a los endpoints MCP.
 """
 
 import base64
@@ -24,9 +17,7 @@ from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
-#: Ámbito que protege los endpoints MCP.
 MCP_SCOPE = "mcp"
-#: Ámbito que los clientes piden para obtener token de refresco.
 OFFLINE_ACCESS_SCOPE = "offline_access"
 MCP_SCOPES_SUPPORTED = (MCP_SCOPE, OFFLINE_ACCESS_SCOPE)
 
@@ -35,78 +26,55 @@ REFRESH_TOKEN_LIFETIME = timedelta(days=30)
 AUTHORIZATION_CODE_LIFETIME = timedelta(minutes=5)
 PURGE_GRACE = timedelta(days=1)
 
-#: Parámetro de sistema con la URL pública base del servidor Odoo.
 PUBLIC_BASE_URL_PARAM = "mcp_server_action.public_base_url"
-#: Parámetro de sistema con el grupo cuyos usuarios pueden autorizar clientes.
+
 AUTH_GROUP_PARAM = "mcp_server_action.auth_group"
 DEFAULT_AUTH_GROUP = "base.group_system"
 
-#: Límites de caché de los documentos CIMD (RFC 9111).
 CIMD_DEFAULT_CACHE = 3600
 CIMD_MIN_CACHE = 300
 CIMD_MAX_CACHE = 86400
 CIMD_MAX_BYTES = 16 * 1024
 CIMD_TIMEOUT = 5
 
-#: Hosts de bucle local: su puerto es efímero (RFC 8252 §7.3).
 LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 
-#: Tope de clientes registrados dinámicamente, para acotar el abuso.
 DCR_MAX_CLIENTS = 1000
 
 DEFAULT_AUTH_METHOD = "none"
 
-
 class McpOauthError(Exception):
-    """Error de protocolo OAuth, con el código y el texto a devolver.
-
-    El código sigue RFC 6749 §5.2 (``invalid_client``, ``invalid_grant``,
-    ``invalid_scope``, ``invalid_target``…).
-    """
-
     def __init__(self, error, description):
         super().__init__(description)
         self.error = error
         self.description = description
 
-
 def hash_secret(value):
-    """Hash de códigos, tokens y secretos: nunca se guardan en claro."""
     return hashlib.sha256((value or "").encode("utf-8")).hexdigest()
 
-
 def bearer_token(authorization):
-    """Token de un header ``Authorization: Bearer <token>``, o None."""
     scheme, _, value = (authorization or "").partition(" ")
     if scheme.lower() != "bearer" or not value.strip():
         return None
     return value.strip()
 
-
 def parse_scope(value):
-    """Lista de ámbitos de un parámetro ``scope``."""
     return [scope for scope in (value or "").split() if scope]
 
-
 def split_url(url):
-    """``urlsplit`` tolerante: None si la URL no es absoluta o es inválida."""
     try:
         parts = urlsplit(url or "")
         if not parts.scheme or not parts.hostname:
             return None
-        parts.port  # fuerza la validación del puerto
+        parts.port 
     except ValueError:
         return None
     return parts
 
-
 def is_client_id_url(client_id):
-    """Los ``client_id`` con esquema http(s) se resuelven como documento CIMD."""
     return urlsplit(client_id or "").scheme in ("http", "https")
 
-
 def origin_of(url):
-    """Origen (esquema://host[:puerto]) de una URL, o None."""
     parts = split_url(url)
     if not parts:
         return None
@@ -116,27 +84,17 @@ def origin_of(url):
     return f"{parts.scheme}://{parts.hostname}{suffix}"
 
 def normalize_resource(url):
-    """Identificador canónico de recurso (RFC 8707 §2).
-
-    Esquema y host en minúsculas, sin puerto por defecto ni barra final, de
-    modo que el ``resource`` que envía el cliente y el que calcula el
-    endpoint MCP coincidan aunque cambien las mayúsculas. Devuelve None si
-    la URL no sirve como recurso (p. ej. con fragmento o consulta).
-    """
+    # RFC 8707 §2
     parts = split_url(url)
     if not parts or parts.fragment or parts.query:
         return None
     return f"{origin_of(url)}{parts.path.rstrip('/')}"
 
-
 def is_loopback_redirect_uri(url):
-    """True para redirecciones de bucle local (``http://localhost/…``)."""
     parts = split_url(url)
     return bool(parts) and parts.scheme == "http" and parts.hostname in LOOPBACK_HOSTS
 
-
 def is_valid_redirect_uri(url):
-    """Solo HTTPS o HTTP en bucle local (OAuth 2.1 §1.5, RFC 8252)."""
     parts = split_url(url)
     if not parts or parts.fragment:
         return False
@@ -144,15 +102,7 @@ def is_valid_redirect_uri(url):
         return True
     return parts.scheme == "http" and parts.hostname in LOOPBACK_HOSTS
 
-
 def redirect_uri_matches(requested, registered):
-    """Coteja la ``redirect_uri`` pedida con una registrada.
-
-    Comparación exacta (RFC 9700 §3.1) salvo por el puerto en redirecciones
-    de bucle local, que es efímero en clientes nativos (RFC 8252 §7.3); los
-    clientes de Claude declaran ``http://localhost/callback`` y
-    ``http://127.0.0.1/callback`` sin puerto.
-    """
     if not requested or not registered:
         return False
     if requested == registered:
@@ -169,14 +119,7 @@ def redirect_uri_matches(requested, registered):
         and req.query == reg.query
     )
 
-
 def is_fetchable_client_id_url(client_id):
-    """Comprueba que el ``client_id`` sea una URL HTTPS pública.
-
-    Aplica las restricciones de CIMD §3 (HTTPS, con componente de ruta, sin
-    fragmento, usuario, contraseña ni segmentos ``.``/``..``) y resuelve el
-    nombre de host para descartar destinos internos (SSRF, CIMD §6.5).
-    """
     parts = split_url(client_id)
     if not parts or parts.scheme != "https":
         return False
@@ -207,7 +150,6 @@ def is_fetchable_client_id_url(client_id):
 
 
 def cache_seconds(cache_control):
-    """Vida útil de la caché del documento CIMD según sus cabeceras HTTP."""
     for directive in (cache_control or "").split(","):
         name, _, value = directive.strip().partition("=")
         name = name.lower()
@@ -222,12 +164,9 @@ def cache_seconds(cache_control):
                 break
     return CIMD_DEFAULT_CACHE
 
-
 def pkce_challenge(verifier):
-    """``code_challenge`` S256 (RFC 7636 §4.2) de un ``code_verifier``."""
     digest = hashlib.sha256(verifier.encode("ascii")).digest()
     return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
-
 
 class McpOauthClient(models.Model):
     _name = "mcp.oauth.client"
@@ -261,7 +200,7 @@ class McpOauthClient(models.Model):
     )
     secret_hash = fields.Char(string="Hash del secreto")
     metadata_expires_at = fields.Datetime(
-        string="Caduca la caché del documento",
+        string="Fecha de Validez Metadata",
         help="Momento en que se volverá a leer el documento del cliente.",
     )
 
@@ -278,8 +217,6 @@ class McpOauthClient(models.Model):
         ]
 
     def _mcp_client_host(self):
-        """Host que se muestra al usuario: el del ``client_id`` es lo único
-        que el cliente no puede falsificar por sí mismo."""
         self.ensure_one()
         parts = split_url(self.client_id)
         return parts.hostname if parts else self.name
@@ -292,7 +229,6 @@ class McpOauthClient(models.Model):
         )
 
     def _mcp_check_secret(self, secret):
-        """Valida el secreto; los clientes públicos no envían ninguno."""
         self.ensure_one()
         if self.token_endpoint_auth_method == "none":
             return True
@@ -302,12 +238,6 @@ class McpOauthClient(models.Model):
 
     @api.model
     def _mcp_resolve_client(self, client_id):
-        """Cliente de ese ``client_id``, leyendo su documento si es una URL.
-
-        Devuelve un recordset vacío si el cliente no existe y no se puede
-        descubrir. Lanza :class:`McpOauthError` si el documento existe pero
-        es inválido.
-        """
         if not client_id:
             return self.browse()
         if not is_client_id_url(client_id):
@@ -341,12 +271,6 @@ class McpOauthClient(models.Model):
 
     @api.model
     def _mcp_fetch_client_metadata(self, client_id):
-        """Descarga y valida el Client ID Metadata Document.
-
-        Devuelve ``{"name", "redirect_uris", "cache_seconds"}``, None si el
-        documento no se pudo obtener, y lanza :class:`McpOauthError` si se
-        obtuvo pero no cumple CIMD §4.
-        """
         if not is_fetchable_client_id_url(client_id):
             raise McpOauthError(
                 "invalid_client",
@@ -426,11 +350,7 @@ class McpOauthClient(models.Model):
 
     @api.model
     def _mcp_register_client(self, client_name, redirect_uris, auth_method):
-        """Registra un cliente nuevo (RFC 7591).
-
-        Devuelve ``(cliente, secreto)``; el secreto solo se devuelve una vez
-        y se guarda su hash.
-        """
+        # RFC 7591
         values = {
             "name": client_name or "Cliente OAuth",
             "redirect_uris": "\n".join(redirect_uris),
@@ -457,7 +377,7 @@ class McpOauthCode(models.Model):
     client_id = fields.Char(string="Client ID", required=True)
     redirect_uri = fields.Char(string="URL de redirección", required=True)
     code_challenge = fields.Char(string="Code challenge", required=True)
-    scope = fields.Char(string="Ámbitos")
+    scope = fields.Char(string="Scope")
     resource = fields.Char(string="Recurso", required=True, index=True)
     user_id = fields.Many2one(
         "res.users",
@@ -466,11 +386,10 @@ class McpOauthCode(models.Model):
         ondelete="cascade",
         index=True,
     )
-    expires_at = fields.Datetime(string="Caduca el", required=True)
+    expires_at = fields.Datetime(string="Fecha de expiración", required=True)
 
     @api.model
     def _mcp_issue(self, client_id, redirect_uri, code_challenge, scope, resource, user):
-        """Emite un código de autorización de un solo uso."""
         self._mcp_purge()
         code = secrets.token_urlsafe(32)
         self.create(
@@ -489,11 +408,6 @@ class McpOauthCode(models.Model):
 
     @api.model
     def _mcp_redeem(self, code, client_id, redirect_uri):
-        """Consume el código y devuelve sus datos, o un dict vacío.
-
-        Un código solo sirve una vez y solo para el cliente y la
-        redirección que lo pidieron (RFC 9700 §4.1).
-        """
         record = self.search(
             [("code_hash", "=", hash_secret(code or ""))], limit=1
         )
@@ -515,7 +429,6 @@ class McpOauthCode(models.Model):
 
     @staticmethod
     def _mcp_verify_pkce(code_verifier, code_challenge):
-        """Comprueba el ``code_verifier`` contra el ``code_challenge`` S256."""
         if not code_verifier or not code_challenge:
             return False
         if not 43 <= len(code_verifier) <= 128:
@@ -529,11 +442,9 @@ class McpOauthCode(models.Model):
 
     @api.model
     def _mcp_purge(self):
-        """Elimina códigos caducados (limpieza oportunista)."""
         self.sudo().search(
             [("expires_at", "<", fields.Datetime.now() - PURGE_GRACE)]
         ).unlink()
-
 
 class McpOauthToken(models.Model):
     _name = "mcp.oauth.token"
@@ -584,12 +495,6 @@ class McpOauthToken(models.Model):
 
     @api.model
     def _mcp_authenticate(self, authorization, resource):
-        """Token de acceso válido para ese recurso, o recordset vacío.
-
-        El token debe estar emitido para el recurso exacto al que se llama
-        (RFC 8707: nunca se aceptan tokens de otro público) y pertenecer a
-        un usuario activo.
-        """
         token = bearer_token(authorization)
         if not token:
             return self.browse()
@@ -611,11 +516,6 @@ class McpOauthToken(models.Model):
 
     @api.model
     def _mcp_redeem_refresh(self, token, client_id):
-        """Valida un token de refresco y lo rota (OAuth 2.1 §4.3.1).
-
-        Devuelve el token si era válido; reutilizar uno ya rotado revoca
-        todos los tokens de ese cliente para ese usuario.
-        """
         record = self.search(
             [("token_hash", "=", hash_secret(token or "")), ("kind", "=", "refresh")],
             limit=1,
@@ -638,7 +538,6 @@ class McpOauthToken(models.Model):
 
     @api.model
     def _mcp_purge(self):
-        """Elimina tokens caducados hace tiempo (limpieza oportunista)."""
         self.sudo().search(
             [("expires_at", "<", fields.Datetime.now() - PURGE_GRACE)]
         ).unlink()

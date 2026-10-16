@@ -5,12 +5,11 @@ from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 from odoo.tools.safe_eval import safe_eval
 
-
 class IrActionsServer(models.Model):
     _inherit = "ir.actions.server"
 
     is_mcp = fields.Boolean(
-        string="¿Es endpoint MCP?",
+        string="Servidor MCP",
         default=False,
         help="Si está activo, esta acción de servidor se expone como herramienta "
              "MCP en la ruta indicada.",
@@ -44,14 +43,12 @@ class IrActionsServer(models.Model):
                 )
 
     def _mcp_tool_name(self):
-        """Nombre MCP de la acción: su xml_id si existe, si no accion_<id>."""
         self.ensure_one()
         xml_ids = self.sudo().get_external_id()
         return xml_ids.get(self.id) or f"accion_{self.id}"
 
     @api.model
     def _mcp_find_tool(self, route, name):
-        """Acción MCP (sudo) de la ruta dada cuyo nombre coincida, o vacío."""
         actions = self.sudo().search(
             [
                 ("is_mcp", "=", True),
@@ -67,7 +64,6 @@ class IrActionsServer(models.Model):
 
     @api.model
     def _mcp_route_exists(self, route):
-        """¿Hay algún endpoint MCP publicado en esa ruta?"""
         return bool(
             self.sudo().search_count(
                 [
@@ -80,7 +76,6 @@ class IrActionsServer(models.Model):
 
     @api.model
     def _mcp_tools_list(self, route):
-        """Lista de herramientas MCP del endpoint de la ruta dada."""
         actions = self.sudo().search(
             [
                 ("is_mcp", "=", True),
@@ -99,12 +94,6 @@ class IrActionsServer(models.Model):
         ]
 
     def _mcp_tool_call(self, arguments):
-        """Ejecuta el código de la acción como herramienta MCP.
-
-        El código ve además `args` (dict de argumentos que envía el LLM) y
-        debe asignar su respuesta a la variable `result` (serializable a JSON;
-        un recordset se convierte con read()).
-        """
         self.ensure_one()
         eval_context = self._get_eval_context(self)
         eval_context["args"] = dict(arguments or {})

@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Clientes OAuth: los descubiertos por su «client_id» URL (CIMD) y los
-         registrados dinámicamente (RFC 7591). -->
     <record id="view_mcp_oauth_client_list" model="ir.ui.view">
         <field name="name">mcp.oauth.client.list</field>
         <field name="model">mcp.oauth.client</field>
@@ -31,7 +29,6 @@
         </field>
     </record>
 
-    <!-- Tokens emitidos: eliminar una fila corta el acceso al instante. -->
     <record id="view_mcp_oauth_token_list" model="ir.ui.view">
         <field name="name">mcp.oauth.token.list</field>
         <field name="model">mcp.oauth.token</field>

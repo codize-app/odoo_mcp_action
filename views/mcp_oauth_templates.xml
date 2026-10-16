@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Estilos compartidos por las pantallas del servidor de autorización. -->
     <template id="mcp_oauth_styles" name="Estilos OAuth de MCP">
         <style>
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 2rem 1rem; background: #f4f4f4; color: #23272f; }
@@ -20,9 +19,6 @@
         </style>
     </template>
 
-    <!-- Pantalla de consentimiento: el usuario decide si el cliente MCP
-         (identificado por su Client ID Metadata Document) puede usar el
-         endpoint elegido con su cuenta de Odoo. -->
     <template id="mcp_oauth_consent" name="Consentimiento OAuth de MCP">
         <html>
             <head>
@@ -65,9 +61,6 @@
                         <span t-out="redirect_host"/>. Compruebe que es el
                         dominio que espera antes de continuar.
                     </p>
-                    <!-- «Cancelar» va primero en el DOM: así la tecla Intro no
-                         autoriza por accidente (el orden visual se invierte
-                         con CSS). -->
                     <form method="post" action="/mcp/oauth/authorize">
                         <input type="hidden" name="csrf_token" t-att-value="csrf_token"/>
                         <t t-foreach="hidden" t-as="field">
@@ -85,8 +78,6 @@
         </html>
     </template>
 
-    <!-- Error de autorización: se muestra cuando no es seguro redirigir al
-         cliente (cliente desconocido o URL de retorno no registrada). -->
     <template id="mcp_oauth_error" name="Error de autorización de MCP">
         <html>
             <head>

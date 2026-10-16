@@ -1,5 +1,6 @@
 """
-Servidor de recursos MCP: los endpoints ``/mcp/<ruta>``.
+Servidor de recursos MCP
+Endpoints generados como ``/mcp/<ruta>``.
 """
 
 import json
@@ -18,7 +19,6 @@ from .mcp_discovery import (
 
 MCP_SERVER_INFO = {"name": "odoo-mcp-server-action", "version": "1.0.0"}
 MCP_PROTOCOL_VERSION = "2025-11-25"
-
 
 class McpController(http.Controller):
     @http.route(

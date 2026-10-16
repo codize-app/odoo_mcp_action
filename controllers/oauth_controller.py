@@ -1,16 +1,5 @@
-"""Servidor de autorización OAuth 2.1 de los endpoints MCP.
-
-El servidor de autorización es el propio Odoo, para que conectar un cliente
-MCP no exija configurar nada en el cliente:
-
-* el cliente se identifica con un *Client ID Metadata Document* (CIMD), es
-  decir, su ``client_id`` es una URL que publica él mismo (Claude y Claude
-  Code lo hacen así), o bien se registra dinámicamente (RFC 7591);
-* el usuario autoriza con su sesión normal de Odoo, en una pantalla que
-  muestra el host del cliente y la URL de retorno;
-* el token queda ligado al endpoint MCP concreto mediante el parámetro
-  ``resource`` (RFC 8707), así que un token de ``/mcp/ventas`` no sirve en
-  ``/mcp/compras``.
+"""
+Servidor de autorización OAuth 2.1 de los endpoints MCP.
 """
 
 import json
@@ -50,11 +39,8 @@ CONSENT_TEMPLATE = "odoo_mcp_action.mcp_oauth_consent"
 ERROR_TEMPLATE = "odoo_mcp_action.mcp_oauth_error"
 AUTH_METHODS_SUPPORTED = (DEFAULT_AUTH_METHOD, "client_secret_post")
 
-
 class McpOauthController(http.Controller):
-    # ------------------------------------------------------------------
-    # Descubrimiento (RFC 8414)
-    # ------------------------------------------------------------------
+    #  RFC 8414
     @http.route(
         "/.well-known/oauth-authorization-server",
         type="http",
@@ -65,9 +51,7 @@ class McpOauthController(http.Controller):
     def authorization_server_metadata(self, **kwargs):
         return request.make_json_response(mcp_authorization_server_metadata())
 
-    # ------------------------------------------------------------------
-    # Autorización (RFC 6749 §4.1, PKCE obligatorio)
-    # ------------------------------------------------------------------
+    # RFC 6749 §4.1, PKCE obligatorio
     @http.route(
         f"{MCP_OAUTH_ROOT}/authorize",
         type="http",
@@ -77,21 +61,18 @@ class McpOauthController(http.Controller):
         readonly=False,
     )
     def authorize(self, **kwargs):
-        # Parámetros de la URL (GET) o del formulario (POST); el formulario
-        # tiene prioridad.
+        # Params
         args = request.httprequest.args
         form = request.httprequest.form
         params = {key: args[key] for key in args}
         params.update({key: form[key] for key in form})
-        # Cliente y redirección: si no son de confianza no se redirige a
-        # ningún sitio, se muestra el error en una página (RFC 6749 §4.1.2.1).
+
         try:
             client, redirect_uri = self._validated_client(params)
         except McpOauthError as error:
             return self._error_page(error)
         state = params.get("state")
-        # A partir de aquí la redirección es legítima y los errores vuelven
-        # al cliente como parámetros de la respuesta de autorización.
+
         try:
             resource, scopes, code_challenge = self._validated_request(
                 params, redirect_uri
@@ -131,9 +112,7 @@ class McpOauthController(http.Controller):
             self._consent_values(client, params, resource, scopes, redirect_uri),
         )
 
-    # ------------------------------------------------------------------
     # Token (RFC 6749 §4.1.3 y §6)
-    # ------------------------------------------------------------------
     @http.route(
         f"{MCP_OAUTH_ROOT}/token",
         type="http",
@@ -172,9 +151,7 @@ class McpOauthController(http.Controller):
             f"Tipo de concesión no admitido: {grant_type}",
         )
 
-    # ------------------------------------------------------------------
-    # Registro dinámico (RFC 7591): los clientes que no publican un CIMD
-    # ------------------------------------------------------------------
+    # RFC 7591
     @http.route(
         f"{MCP_OAUTH_ROOT}/register",
         type="http",
@@ -241,9 +218,6 @@ class McpOauthController(http.Controller):
             body, headers={"Cache-Control": "no-store"}, status=201
         )
 
-    # ------------------------------------------------------------------
-    # Canje de código y refresco
-    # ------------------------------------------------------------------
     def _exchange_code(self, client, params):
         code = (
             request.env["mcp.oauth.code"]
@@ -313,9 +287,6 @@ class McpOauthController(http.Controller):
             headers={"Cache-Control": "no-store", "Pragma": "no-cache"},
         )
 
-    # ------------------------------------------------------------------
-    # Validaciones de la petición de autorización
-    # ------------------------------------------------------------------
     @staticmethod
     def _validated_client(params):
         """Cliente del ``client_id`` y comprobación de la ``redirect_uri``."""
@@ -368,7 +339,6 @@ class McpOauthController(http.Controller):
 
     @staticmethod
     def _validated_resource(value):
-        """El recurso debe ser un endpoint MCP real de este mismo Odoo."""
         resource = normalize_resource((value or "").strip())
         if not resource:
             raise McpOauthError(
@@ -393,18 +363,8 @@ class McpOauthController(http.Controller):
             )
         return resource
 
-    # ------------------------------------------------------------------
-    # Consentimiento
-    # ------------------------------------------------------------------
     @staticmethod
     def _may_authorize():
-        """Solo el grupo configurado puede autorizar clientes.
-
-        El código de las acciones se ejecuta como superusuario, así que por
-        defecto la autorización queda para los administradores; el parámetro
-        de sistema ``mcp_server_action.auth_group`` permite abrirla a otro
-        grupo (por ejemplo, un grupo de integraciones).
-        """
         group = McpOauthController._authorized_group()
         return bool(group) and group in request.env.user.group_ids
 
@@ -432,12 +392,6 @@ class McpOauthController(http.Controller):
 
     @staticmethod
     def _consent_values(client, params, resource, scopes, redirect_uri):
-        """Contexto de la pantalla de consentimiento.
-
-        Se muestra el host del ``client_id`` (dato que el cliente no puede
-        falsificar) y el host de retorno, como exige el CIMD §6.4 y la
-        especificación de autorización de MCP.
-        """
         parts = urlsplit(redirect_uri)
         return {
             "client": client,
@@ -459,9 +413,7 @@ class McpOauthController(http.Controller):
             ],
         }
 
-    # ------------------------------------------------------------------
-    # Respuestas
-    # ------------------------------------------------------------------
+    # Request
     @staticmethod
     def _redirect(redirect_uri, values):
         query = urlencode(
