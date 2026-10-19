@@ -21,6 +21,21 @@ class IrActionsServer(models.Model):
              "para agruparse en el mismo endpoint.",
     )
 
+    mcp_url = fields.Char(
+        string="URL MCP",
+        compute="_compute_mcp_url",
+        help="URL del endpoint MCP generada a partir de la ruta: /mcp/<ruta>.",
+    )
+
+    @api.depends("is_mcp", "mcp_route")
+    def _compute_mcp_url(self):
+        for action in self:
+            action.mcp_url = (
+                f"/mcp/{action.mcp_route}"
+                if action.is_mcp and action.mcp_route
+                else False
+            )
+
     @api.constrains("is_mcp", "mcp_route", "state", "code")
     def _check_mcp_route(self):
         for action in self:
