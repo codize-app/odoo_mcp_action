@@ -1,4 +1,4 @@
-# Odoo MCP - Server Actiones
+# Odoo MCP - Server Actions
 
 ## Funcionalidad
 
