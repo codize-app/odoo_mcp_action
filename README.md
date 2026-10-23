@@ -12,9 +12,11 @@ Cada **ruta MCP** (`mcp_route`) es un endpoint segmentado: `/mcp/<ruta>` lista y
 
 1. Ajustes Técnicos → Acciones de servidor → Nueva.
 2. Tipo: **Ejecutar código Python**; elegir modelo (opcional, para `record`/`records`).
-3. Pestaña **MCP**: activar **¿Es endpoint MCP?** y poner una **ruta** (p. ej. `sales`).
+3. Pestaña **MCP**: activar **¿Es endpoint MCP?**, poner una **ruta** (p. ej. `sales`) y, si la herramienta debe modificar datos, activar **Permitir escritura**.
 
 El código debe asignar la respuesta a la variable `result` (serializable a JSON; un recordset se convierte con `read()`). Disponibles las variables nativas (`env`, `model`, `record`, `records`, `log`, `time`, `datetime`, …) más `args` (dict de argumentos que envía el LLM).
+
+Por defecto las herramientas MCP son de **solo lectura**: el código se ejecuta en una transacción PostgreSQL de solo lectura y cualquier intento de `create`, `write` o `unlink` devuelve un error al LLM. Para permitir escrituras hay que activar **Permitir escritura** en la pestaña MCP de esa acción.
 
 Ejemplo (modelos de `base`, sin dependencias extra):
 
@@ -22,6 +24,15 @@ Ejemplo (modelos de `base`, sin dependencias extra):
 result = env["res.partner"].search_read(
     [("is_company", "=", True)], ["name", "email"]
 )
+```
+
+Ejemplo de escritura (con **Permitir escritura** activado):
+
+```python
+partner = env["res.partner"].create(
+    {"name": args["name"], "email": args.get("email")}
+)
+result = {"id": partner.id, "name": partner.name}
 ```
 
 ## Autenticación (OAuth 2.1, sin configurar nada en el cliente)
@@ -106,3 +117,4 @@ El parámetro antiguo `mcp_server_action.token` **ya no se usa**: si venía de l
 - El registro dinámico está limitado a 1000 clientes para acotar el abuso.
 - Solo administradores crean acciones (campo `code` restringido a sistema) y parámetros del sistema.
 - Cada ruta segmenta qué ve cada cliente: un cliente de `/mcp/sales` no ve ni llama herramientas de otra ruta.
+- Las herramientas MCP son de solo lectura salvo que se active **Permitir escritura**; el bloqueo es a nivel de transacción de base de datos y una ejecución fallida se revierte (savepoint). Es una salvaguarda operativa, no un sandbox: el código lo escribe un administrador y se ejecuta como superusuario.

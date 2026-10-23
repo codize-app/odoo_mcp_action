@@ -10,6 +10,7 @@
                     <group>
                         <field name="is_mcp"/>
                         <field name="mcp_route" invisible="not is_mcp" required="is_mcp"/>
+                        <field name="mcp_allow_write" invisible="not is_mcp"/>
                         <field name="mcp_url" readonly="1" invisible="not is_mcp" />
                     </group>
                 </page>
